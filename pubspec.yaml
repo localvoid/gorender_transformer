@@ -1,0 +1,10 @@
+name: gorender_transformer
+version: 0.1.0
+author: Boris Kaul <localvoid@gmail.com>
+description: Transformer that renders go `html.Template` templates using JSON data files.
+homepage: http://github.com/localvoid/gorender_transformer
+environment:
+  sdk: '>=1.6.0-dev.9.3'
+dependencies:
+  barback: '>=0.15.0 <0.16.0'
+  path: '>=1.3.0 <2.0.0'
