@@ -133,7 +133,7 @@ class Transformer extends AggregateTransformer implements
       }
     }).catchError((e) {
       transform.logger.error(e.toString());
-    });
+    }, test: (e) => e is InvalidDataException);
   }
 
   Future declareOutputs(DeclaringAggregateTransform transform) {
@@ -171,12 +171,21 @@ Future<String> _gorender(String templatePath, String dataPath, bool html) {
 
   return Process.run('gorender', flags).then((result) {
     if (result.exitCode != 0) {
+      if (result.exitCode == 65) {
+        throw new InvalidDataException(result.stderr);
+      }
       throw new GorenderException(result.stderr);
-    }
+    };
     return result.stdout;
   }).catchError((e) {
     throw new GorenderException("gorender: command not found");
   }, test: (e) => e is ProcessException && e.errorCode == 2);
+}
+
+class InvalidDataException implements Exception {
+  final String msg;
+  InvalidDataException([this.msg]);
+  String toString() => msg == null ? 'InvalidData' : msg;
 }
 
 class GorenderException implements Exception {
