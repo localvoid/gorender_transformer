@@ -2,7 +2,7 @@ name: gorender_transformer
 version: 0.2.0
 author: Boris Kaul <localvoid@gmail.com>
 description: Transformer that renders go `text.template` templates using JSON data files.
-homepage: http://github.com/localvoid/gorender_transformer
+homepage: https://github.com/localvoid/gorender_transformer
 environment:
   sdk: '>=1.6.0-dev.9.3'
 dependencies:
