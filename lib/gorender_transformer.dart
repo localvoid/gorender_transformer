@@ -11,6 +11,38 @@ import 'package:barback/barback.dart';
 import 'package:path/path.dart' as ospath;
 
 /**
+ * Transformer Options:
+ *
+ * [templateExtension] Extension of template files. DEFAULT: `.gtpl`
+ *
+ * [dataExtension] Extension of data files. DEFAULT: `.json`
+ *
+ * [htmlExtension] Extension of html templates. This extensions will be
+ * rendered with `html.template` package. Full extension of the template
+ * file will be `[htmlExtension][templateExtension]`. DEFAULT: `.html`
+ */
+class TransformerOptions {
+  final String templateExtension;
+  final String dataExtension;
+  final String htmlExtension;
+
+  TransformerOptions(this.templateExtension, this.dataExtension,
+      this.htmlExtension);
+
+  factory TransformerOptions.parse(Map configuration) {
+    config(key, defaultValue) {
+      var value = configuration[key];
+      return value != null ? value : defaultValue;
+    }
+
+    return new TransformerOptions(
+        config('template-extension', '.gtpl'),
+        config('data-extension', '.json'),
+        config('html-extension', '.html'));
+  }
+}
+
+/**
  * Renders go `html.Template` templates using JSON data file.
  *
  * This transformer assumes that data file is located near the template file.
@@ -21,14 +53,17 @@ import 'package:path/path.dart' as ospath;
 class Transformer extends AggregateTransformer implements
     DeclaringAggregateTransformer {
   final BarbackSettings _settings;
+  final TransformerOptions _options;
 
-  Transformer.asPlugin(this._settings);
+  Transformer.asPlugin(BarbackSettings s)
+      : _settings = s,
+        _options = new TransformerOptions.parse(s.configuration);
 
   String classifyPrimary(AssetId id) {
-    if (id.extension == '.tpl') {
+    if (id.extension == _options.templateExtension) {
       var outPath = ospath.withoutExtension(ospath.withoutExtension(id.path));
       return '${id.package}|${outPath}';
-    } else if (id.extension == '.json') {
+    } else if (id.extension == _options.dataExtension) {
       var outPath = ospath.withoutExtension(id.path);
       return '${id.package}|${outPath}';
     } else {
@@ -41,13 +76,20 @@ class Transformer extends AggregateTransformer implements
       if (assets.length == 2) {
         Asset templateAsset;
         Asset dataAsset;
+        bool isHtml = false;
 
-        if (assets[0].id.extension == '.tpl') {
+        if (assets[0].id.extension == _options.templateExtension) {
           templateAsset = assets[0];
           dataAsset = assets[1];
         } else {
           templateAsset = assets[1];
           dataAsset = assets[0];
+        }
+
+        if (ospath.extension(ospath.withoutExtension(templateAsset.id.path)) ==
+            _options.htmlExtension) {
+
+          isHtml = true;
         }
 
         if (_settings.mode == BarbackMode.DEBUG) {
@@ -63,7 +105,7 @@ class Transformer extends AggregateTransformer implements
             var dataFuture = dataSink.addStream(dataAsset.read());
 
             return Future.wait([templateFuture, dataFuture]).then((files) {
-              return _gorender(files[0].path, files[1].path);
+              return _gorender(files[0].path, files[1].path, isHtml);
             }).then((result) {
               transform.addOutput(
                   new Asset.fromString(templateAsset.id.changeExtension(''), result));
@@ -82,10 +124,14 @@ class Transformer extends AggregateTransformer implements
 
   Future declareOutputs(DeclaringAggregateTransform transform) {
     return transform.primaryIds.take(2).toList().then((assets) {
+      if (assets.length < 2) {
+        return;
+      }
+
       AssetId templateAssetId;
       AssetId dataAssetId;
 
-      if (assets[0].extension == '.tpl') {
+      if (assets[0].extension == _options.templateExtension) {
         templateAssetId = assets[0];
         dataAssetId = assets[1];
       } else {
@@ -101,8 +147,14 @@ class Transformer extends AggregateTransformer implements
   }
 }
 
-Future<String> _gorender(String templatePath, String dataPath) {
-  var flags = ['-d', dataPath, templatePath];
+Future<String> _gorender(String templatePath, String dataPath, bool html) {
+  var flags;
+  if (html) {
+    flags = ['-html', '-d', dataPath, templatePath];
+  } else {
+    flags = ['-d', dataPath, templatePath];
+  }
+
   return Process.run('gorender', flags).then((result) {
     if (result.exitCode != 0) {
       throw new GorenderException(result.stderr);
