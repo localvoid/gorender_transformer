@@ -96,24 +96,35 @@ class Transformer extends AggregateTransformer implements
           return Directory.systemTemp.createTemp(
               'gorender-transformer-').then((dir) {
 
-            var templateSink =
-                new File(ospath.join(dir.path, 'template')).openWrite();
-            var dataSink =
-                new File(ospath.join(dir.path, 'data.json')).openWrite();
+            var templateSink;
+            var dataSink;
 
-            var templateFuture = templateSink.addStream(templateAsset.read());
-            var dataFuture = dataSink.addStream(dataAsset.read());
+            return new Future.sync(() {
+              templateSink = new File(
+                  ospath.join(dir.path, 'template')).openWrite();
+              dataSink = new File(
+                  ospath.join(dir.path, 'data.json')).openWrite();
 
-            return Future.wait([templateFuture, dataFuture]).then((files) {
+              var templateFuture = templateSink.addStream(templateAsset.read());
+              var dataFuture = dataSink.addStream(dataAsset.read());
+
+              return Future.wait([templateFuture, dataFuture]);
+            }).then((files) {
               return _gorender(files[0].path, files[1].path, isHtml);
             }).then((result) {
               transform.addOutput(
                   new Asset.fromString(templateAsset.id.changeExtension(''), result));
             }).whenComplete(() {
-              return Future.wait(
-                  [templateSink.close(), dataSink.close()]).then((_) {
-                return dir.delete(recursive: true);
-              });
+              var futures = [];
+              if (templateSink != null) {
+                futures.add(templateSink.close());
+              }
+              if (dataSink != null) {
+                futures.add(dataSink.close());
+              }
+              return Future.wait(futures);
+            }).whenComplete(() {
+              return dir.delete(recursive: true);
             });
           });
         } else {
