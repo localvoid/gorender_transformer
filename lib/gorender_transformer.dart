@@ -2,7 +2,7 @@
 // AUTHORS file for details. All rights reserved. Use of this source code is
 // governed by a BSD-style license that can be found in the LICENSE file.
 
-/* Transfomer that renders go `html.Template` templates using JSON data file. */
+/* Transfomer that renders go `text.template` templates using JSON data file. */
 library gorender_transformer;
 
 import 'dart:async';
@@ -43,7 +43,7 @@ class TransformerOptions {
 }
 
 /**
- * Renders go `html.Template` templates using JSON data file.
+ * Renders go `text.template` templates using JSON data file.
  *
  * This transformer assumes that data file is located near the template file.
  *
