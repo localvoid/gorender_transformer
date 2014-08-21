@@ -110,7 +110,10 @@ class Transformer extends AggregateTransformer implements
               transform.addOutput(
                   new Asset.fromString(templateAsset.id.changeExtension(''), result));
             }).whenComplete(() {
-              return dir.delete(recursive: true);
+              return Future.wait(
+                  [templateSink.close(), dataSink.close()]).then((_) {
+                return dir.delete(recursive: true);
+              });
             });
           });
         } else {
